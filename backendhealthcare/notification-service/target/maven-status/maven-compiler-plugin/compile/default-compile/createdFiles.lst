@@ -1,0 +1,5 @@
+com\healthcare\notification\config\WebConfig.class
+com\healthcare\notification\controller\NotificationController.class
+com\healthcare\notification\model\Notification.class
+com\healthcare\notification\service\NotificationService.class
+com\healthcare\notification\NotificationApplication.class

@@ -1,0 +1,10 @@
+http://localhost:8081/users
+Content-Type:application/json
+
+{
+"name":"Rahul",
+"email":"rahul@gamil.com",
+"password":"12345",
+"phone":"9876543217",
+"role":"PATIENT"
+}
