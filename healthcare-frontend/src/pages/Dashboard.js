@@ -44,15 +44,35 @@ function Dashboard() {
         time: timeSlots[0]
     });
 
-    // Receipt modal state (Billing Microservice details)
+    // Receipt modal state
     const [receiptModal, setReceiptModal] = useState({
         open: false,
         billData: null
     });
 
+    // Doctor Prescription Edit Modal
+    const [prescriptionEditModal, setPrescriptionEditModal] = useState({
+        open: false,
+        appointmentId: null,
+        patientName: "",
+        prescriptionText: "",
+        saving: false
+    });
+
+    // Patient Prescription View Modal
+    const [prescriptionViewModal, setPrescriptionViewModal] = useState({
+        open: false,
+        doctorName: "",
+        specialization: "",
+        date: "",
+        prescriptionText: ""
+    });
+
     // Doctor profile settings state
     const [docAvailability, setDocAvailability] = useState("Available");
-    const [docFee, setDocFee] = useState(50);
+    const [docFee, setDocFee] = useState(1000);
+    const [docShift, setDocShift] = useState("Day");
+    const [docWorkingHours, setDocWorkingHours] = useState(8);
 
     const showAlert = (msg, type = "success") => {
         setAlert({ msg, type });
@@ -77,7 +97,9 @@ function Dashboard() {
                 const matched = (docRes.data || []).find(d => d.user?.id === currentUser.id || d.id === currentUser.id);
                 if (matched) {
                     setDocAvailability(matched.availability || "Available");
-                    setDocFee(matched.consultationFee || 50);
+                    setDocFee(matched.consultationFee || 1000);
+                    setDocShift(matched.shift || "Day");
+                    setDocWorkingHours(matched.workingHours || 8);
                 }
             } else if (currentUser.role === "ADMIN") {
                 const [apptRes, userRes] = await Promise.all([
@@ -122,7 +144,7 @@ function Dashboard() {
 
             const bookedAppt = apptRes.data;
             const chosenDoc = doctors.find(d => d.id === Number(selectedDocId));
-            const fee = chosenDoc?.consultationFee || 50;
+            const fee = chosenDoc?.consultationFee || 1000;
             const docName = chosenDoc?.user?.name || `Dr. #${selectedDocId}`;
             const patName = currentUser.name || "Patient";
 
@@ -139,10 +161,10 @@ function Dashboard() {
             notificationApi.post("/notifications/send", {
                 recipientEmail: currentUser.email,
                 subject: "Appointment Confirmed",
-                message: `Your appointment with ${docName} on ${bookingDate} at ${bookingTime} is confirmed.`
+                message: `Your consultation with ${docName} on ${bookingDate} at ${bookingTime} is confirmed.`
             }).catch(() => {});
 
-            showAlert("Appointment booked successfully!", "success");
+            showAlert("Appointment booked successfully.", "success");
             setBookingDate("");
             setActiveTab("appointments");
             fetchDashboardData();
@@ -156,7 +178,7 @@ function Dashboard() {
 
     // Open itemized receipt from Billing Microservice
     const handleViewReceipt = async (appointment) => {
-        const fee = appointment.consultationFee || appointment.doctor?.consultationFee || 50;
+        const fee = appointment.consultationFee || appointment.doctor?.consultationFee || 1000;
         const patName = appointment.patient?.user?.name || currentUser.name || "Patient";
         const docName = appointment.doctor?.user?.name || `Dr. #${appointment.doctor?.id || "N/A"}`;
 
@@ -175,7 +197,6 @@ function Dashboard() {
                 });
                 bill = createRes.data;
             } catch (err) {
-                // Microservice fallback calculation
                 const tax = Math.round(fee * 0.05 * 100) / 100;
                 bill = {
                     id: 1000 + appointment.id,
@@ -199,6 +220,56 @@ function Dashboard() {
                 appointmentTime: appointment.appointmentTime,
                 appointmentDate: appointment.appointmentDate
             }
+        });
+    };
+
+    // Doctor opens prescription modal
+    const handleOpenPrescriptionEdit = (appointment) => {
+        const patName = appointment.patient?.user?.name || `Patient #${appointment.patient?.id || "N/A"}`;
+        setPrescriptionEditModal({
+            open: true,
+            appointmentId: appointment.id,
+            patientName: patName,
+            prescriptionText: appointment.prescription || "",
+            saving: false
+        });
+    };
+
+    // Doctor saves prescription
+    const handleSavePrescription = async (e) => {
+        e.preventDefault();
+        setPrescriptionEditModal(prev => ({ ...prev, saving: true }));
+
+        try {
+            await api.put(`/appointments/prescription/${prescriptionEditModal.appointmentId}`, null, {
+                params: { prescription: prescriptionEditModal.prescriptionText }
+            });
+
+            // Dispatch background event to Notification Microservice
+            notificationApi.post("/notifications/send", {
+                recipientEmail: currentUser.email,
+                subject: `Prescription for Appointment #${prescriptionEditModal.appointmentId}`,
+                message: `Prescription recorded by Doctor: ${prescriptionEditModal.prescriptionText.substring(0, 50)}...`
+            }).catch(() => {});
+
+            showAlert("Prescription saved successfully.", "success");
+            setPrescriptionEditModal({ open: false, appointmentId: null, patientName: "", prescriptionText: "", saving: false });
+            fetchDashboardData();
+        } catch (err) {
+            showAlert("Error saving prescription.", "danger");
+            setPrescriptionEditModal(prev => ({ ...prev, saving: false }));
+        }
+    };
+
+    // Patient views prescription
+    const handleOpenPrescriptionView = (appointment) => {
+        const docName = appointment.doctor?.user?.name || `Dr. #${appointment.doctor?.id || "N/A"}`;
+        setPrescriptionViewModal({
+            open: true,
+            doctorName: docName,
+            specialization: appointment.doctor?.specialization || "General Physician",
+            date: appointment.appointmentDate,
+            prescriptionText: appointment.prescription || "No prescription notes entered yet by the doctor."
         });
     };
 
@@ -227,7 +298,7 @@ function Dashboard() {
                 }
             });
 
-            showAlert("Appointment rescheduled successfully!", "success");
+            showAlert("Appointment rescheduled successfully.", "success");
             setRescheduleModal({ open: false, appointmentId: null, date: "", time: timeSlots[0] });
             fetchDashboardData();
         } catch (err) {
@@ -246,7 +317,13 @@ function Dashboard() {
             await api.put(`/doctors/fee/${currentUser.id}`, null, {
                 params: { consultationFee: Number(docFee) }
             });
-            showAlert("Doctor settings updated successfully!", "success");
+            await api.put(`/doctors/shift/${currentUser.id}`, null, {
+                params: {
+                    shift: docShift,
+                    workingHours: Number(docWorkingHours)
+                }
+            });
+            showAlert("Doctor settings updated successfully.", "success");
             fetchDashboardData();
         } catch (err) {
             showAlert("Settings saved.", "success");
@@ -257,7 +334,7 @@ function Dashboard() {
 
     const totalRevenue = appointments
         .filter(a => (a.status || "").toUpperCase() !== "CANCELLED")
-        .reduce((sum, a) => sum + (a.consultationFee || a.doctor?.consultationFee || 50), 0);
+        .reduce((sum, a) => sum + (a.consultationFee || a.doctor?.consultationFee || 1000), 0);
 
     const patientUsers = allUsers.filter(u => u.role === "PATIENT");
 
@@ -272,13 +349,13 @@ function Dashboard() {
                 <div className="card dashboard-user-card" style={{ marginBottom: "20px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
                         <div>
-                            <h1 style={{ fontSize: "21px", color: "#0f172a", fontWeight: 700 }}>
+                            <h1 style={{ fontSize: "20px", color: "#0f172a", fontWeight: 700 }}>
                                 Welcome, {currentUser.name || currentUser.email}
                             </h1>
                             <p style={{ fontSize: "13.5px", color: "#64748b", marginTop: "4px" }}>
                                 Role: <span className="badge badge-role">{currentUser.role}</span>
-                                {currentUser.email && ` • ${currentUser.email}`}
-                                {currentUser.phone && ` • Phone: ${currentUser.phone}`}
+                                {currentUser.email && ` | ${currentUser.email}`}
+                                {currentUser.phone && ` | Phone: ${currentUser.phone}`}
                             </p>
                         </div>
 
@@ -286,7 +363,7 @@ function Dashboard() {
                             <div style={{ display: "flex", gap: "12px" }}>
                                 <div className="stat-box" style={{ background: "#ecfdf5", borderColor: "#a7f3d0" }}>
                                     <span className="stat-title" style={{ color: "#166534" }}>Total Revenue</span>
-                                    <span className="stat-value" style={{ color: "#15803d" }}>${totalRevenue}</span>
+                                    <span className="stat-value" style={{ color: "#15803d" }}>₹{totalRevenue.toLocaleString("en-IN")}</span>
                                 </div>
                                 <div className="stat-box">
                                     <span className="stat-title">Appointments</span>
@@ -317,7 +394,7 @@ function Dashboard() {
                                 className={`tab-link ${activeTab === "doctors" ? "active" : ""}`}
                                 onClick={() => setActiveTab("doctors")}
                             >
-                                View Doctors
+                                Doctors
                             </button>
                         </>
                     )}
@@ -334,7 +411,7 @@ function Dashboard() {
                                 className={`tab-link ${activeTab === "settings" ? "active" : ""}`}
                                 onClick={() => setActiveTab("settings")}
                             >
-                                Availability & Fees
+                                Practice Settings
                             </button>
                         </>
                     )}
@@ -374,11 +451,11 @@ function Dashboard() {
                     <div className="card" style={{ marginTop: "16px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                             <h2 style={{ fontSize: "17px", color: "#0f172a", fontWeight: 600 }}>
-                                {currentUser.role === "DOCTOR" ? "Scheduled Patient Visits" : currentUser.role === "ADMIN" ? "Hospital Appointments" : "Your Booked Appointments"}
+                                {currentUser.role === "DOCTOR" ? "Scheduled Patient Visits" : currentUser.role === "ADMIN" ? "Appointments Record" : "Your Booked Appointments"}
                             </h2>
                             {currentUser.role === "PATIENT" && (
                                 <button onClick={() => setActiveTab("book")} className="btn btn-primary btn-sm">
-                                    + Book New
+                                    + Book New Appointment
                                 </button>
                             )}
                         </div>
@@ -387,7 +464,7 @@ function Dashboard() {
                             <p style={{ color: "#64748b" }}>Loading appointments...</p>
                         ) : appointments.length === 0 ? (
                             <div style={{ textAlign: "center", padding: "28px" }}>
-                                <p style={{ color: "#64748b" }}>No appointments found.</p>
+                                <p style={{ color: "#64748b" }}>No appointments recorded yet.</p>
                             </div>
                         ) : (
                             <div className="table-responsive">
@@ -399,7 +476,8 @@ function Dashboard() {
                                             {currentUser.role !== "PATIENT" && <th>Patient</th>}
                                             <th>Date</th>
                                             <th>Time</th>
-                                            <th>Fee</th>
+                                            <th>Fee (₹)</th>
+                                            <th>Prescription</th>
                                             <th>Status</th>
                                             <th>Actions</th>
                                         </tr>
@@ -409,43 +487,70 @@ function Dashboard() {
                                             const isCancelled = (a.status || "").toUpperCase() === "CANCELLED";
                                             const docName = a.doctor?.user?.name || `Dr. #${a.doctor?.id || "N/A"}`;
                                             const patName = a.patient?.user?.name || `Patient #${a.patient?.id || "N/A"}`;
+                                            const hasPrescription = a.prescription && a.prescription.trim().length > 0;
 
                                             return (
                                                 <tr key={a.id}>
                                                     <td>#{a.id}</td>
                                                     {currentUser.role !== "DOCTOR" && (
                                                         <td>
-                                                            <strong>👨‍⚕️ {docName}</strong>
+                                                            <strong>{docName}</strong>
                                                             <br />
                                                             <span style={{ fontSize: "12px", color: "#64748b" }}>{a.doctor?.specialization || "General Physician"}</span>
                                                         </td>
                                                     )}
                                                     {currentUser.role !== "PATIENT" && (
                                                         <td>
-                                                            <strong>👤 {patName}</strong>
+                                                            <strong>{patName}</strong>
                                                             <br />
                                                             <span style={{ fontSize: "12px", color: "#64748b" }}>{a.patient?.user?.email || "N/A"}</span>
                                                         </td>
                                                     )}
                                                     <td>{a.appointmentDate}</td>
                                                     <td>{a.appointmentTime}</td>
-                                                    <td style={{ fontWeight: "bold", color: "#0f766e" }}>
-                                                        ${a.consultationFee || a.doctor?.consultationFee || 50}
+                                                    <td style={{ fontWeight: "600", color: "#0f766e" }}>
+                                                        ₹{a.consultationFee || a.doctor?.consultationFee || 1000}
                                                     </td>
+
+                                                    {/* Prescription Column */}
+                                                    <td>
+                                                        {currentUser.role === "DOCTOR" ? (
+                                                            <button
+                                                                onClick={() => handleOpenPrescriptionEdit(a)}
+                                                                className={`btn btn-sm ${hasPrescription ? "btn-secondary" : "btn-outline"}`}
+                                                                style={{ padding: "4px 8px", fontSize: "12px" }}
+                                                            >
+                                                                {hasPrescription ? "Edit Prescription" : "Write Prescription"}
+                                                            </button>
+                                                        ) : (
+                                                            hasPrescription ? (
+                                                                <button
+                                                                    onClick={() => handleOpenPrescriptionView(a)}
+                                                                    className="btn btn-outline btn-sm"
+                                                                    style={{ padding: "4px 8px", fontSize: "12px" }}
+                                                                >
+                                                                    View Prescription
+                                                                </button>
+                                                            ) : (
+                                                                <span style={{ fontSize: "12px", color: "#94a3b8" }}>Not Added</span>
+                                                            )
+                                                        )}
+                                                    </td>
+
                                                     <td>
                                                         <span className={`badge ${isCancelled ? "badge-cancelled" : "badge-booked"}`}>
                                                             {a.status || "Booked"}
                                                         </span>
                                                     </td>
+
                                                     <td>
                                                         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                                            {/* View Bill / Receipt Button */}
+                                                            {/* View Receipt Button */}
                                                             <button
                                                                 onClick={() => handleViewReceipt(a)}
                                                                 className="btn btn-outline btn-sm"
-                                                                title="View Bill Details"
                                                             >
-                                                                📄 Receipt
+                                                                Receipt
                                                             </button>
 
                                                             {!isCancelled && (
@@ -483,12 +588,12 @@ function Dashboard() {
 
                 {/* TAB: BOOK APPOINTMENT */}
                 {activeTab === "book" && (
-                    <div className="card" style={{ maxWidth: "520px", margin: "16px auto" }}>
+                    <div className="card" style={{ maxWidth: "560px", margin: "16px auto" }}>
                         <h2 style={{ fontSize: "18px", marginBottom: "12px", color: "#0f172a" }}>Book an Appointment</h2>
 
                         <form onSubmit={handleBook}>
                             <div className="form-group">
-                                <label>Doctor *</label>
+                                <label>Select Doctor *</label>
                                 <select
                                     className="form-select"
                                     value={selectedDocId}
@@ -498,7 +603,7 @@ function Dashboard() {
                                     <option value="">-- Select Doctor --</option>
                                     {doctors.map((d) => (
                                         <option key={d.id} value={d.id}>
-                                            {d.user?.name || `Dr. #${d.id}`} - {d.specialization || "General Physician"} (${d.consultationFee || 50})
+                                            {d.user?.name || `Dr. #${d.id}`} - {d.specialization || "General"} ({d.shift || "Day"} Shift, ₹{d.consultationFee || 1000})
                                         </option>
                                     ))}
                                 </select>
@@ -531,7 +636,7 @@ function Dashboard() {
                             </div>
 
                             <button type="submit" className="btn btn-primary" style={{ width: "100%", padding: "10px" }} disabled={bookingLoading}>
-                                {bookingLoading ? "Booking..." : "Confirm Appointment"}
+                                {bookingLoading ? "Confirming..." : "Confirm Appointment"}
                             </button>
                         </form>
                     </div>
@@ -542,18 +647,17 @@ function Dashboard() {
                     <div className="card" style={{ marginTop: "16px" }}>
                         {currentUser.role === "ADMIN" ? (
                             <div>
-                                <h2 style={{ fontSize: "18px", marginBottom: "14px", color: "#0f172a" }}>All Registered Doctors</h2>
+                                <h2 style={{ fontSize: "18px", marginBottom: "14px", color: "#0f172a" }}>Registered Doctors</h2>
                                 <div className="table-responsive">
                                     <table className="app-table">
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
                                                 <th>Doctor Name</th>
-                                                <th>Email</th>
                                                 <th>Specialization</th>
-                                                <th>Qualification</th>
+                                                <th>Shift & Hours</th>
                                                 <th>Experience</th>
-                                                <th>Fee ($)</th>
+                                                <th>Fee (₹)</th>
                                                 <th>Availability</th>
                                             </tr>
                                         </thead>
@@ -561,12 +665,15 @@ function Dashboard() {
                                             {doctors.map((d) => (
                                                 <tr key={d.id}>
                                                     <td>#{d.id}</td>
-                                                    <td><strong>👨‍⚕️ {d.user?.name || `Dr. #${d.id}`}</strong></td>
-                                                    <td>{d.user?.email || "N/A"}</td>
+                                                    <td><strong>{d.user?.name || `Dr. #${d.id}`}</strong></td>
                                                     <td>{d.specialization || "General Physician"}</td>
-                                                    <td>{d.qualification || "MBBS"}</td>
-                                                    <td>{d.experience || 5} Yrs</td>
-                                                    <td>${d.consultationFee || 50}</td>
+                                                    <td>
+                                                        <span style={{ fontSize: "12px", background: "#f8fafc", color: "#475569", padding: "2px 8px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>
+                                                            {d.shift || "Day"} Shift ({d.workingHours || 8} hrs/day)
+                                                        </span>
+                                                    </td>
+                                                    <td>{d.experience || 10}+ Yrs</td>
+                                                    <td style={{ fontWeight: "600", color: "#0f766e" }}>₹{d.consultationFee || 1000}</td>
                                                     <td>
                                                         <span className={`badge ${d.availability === "Available" ? "badge-available" : "badge-busy"}`}>
                                                             {d.availability || "Available"}
@@ -589,12 +696,12 @@ function Dashboard() {
 
                 {/* TAB: DOCTOR SETTINGS */}
                 {activeTab === "settings" && currentUser.role === "DOCTOR" && (
-                    <div className="card" style={{ maxWidth: "480px", margin: "16px auto" }}>
-                        <h2 style={{ fontSize: "18px", marginBottom: "12px", color: "#0f172a" }}>Doctor Availability & Fee</h2>
+                    <div className="card" style={{ maxWidth: "520px", margin: "16px auto" }}>
+                        <h2 style={{ fontSize: "18px", marginBottom: "12px", color: "#0f172a" }}>Doctor Practice Settings</h2>
 
                         <form onSubmit={handleSaveDoctorSettings}>
                             <div className="form-group">
-                                <label>Availability</label>
+                                <label>Availability Status</label>
                                 <select
                                     className="form-select"
                                     value={docAvailability}
@@ -606,12 +713,41 @@ function Dashboard() {
                                 </select>
                             </div>
 
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                                <div className="form-group">
+                                    <label>Shift</label>
+                                    <select
+                                        className="form-select"
+                                        value={docShift}
+                                        onChange={(e) => setDocShift(e.target.value)}
+                                    >
+                                        <option value="Day">Day Shift</option>
+                                        <option value="Night">Night Shift</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Working Hours</label>
+                                    <select
+                                        className="form-select"
+                                        value={docWorkingHours}
+                                        onChange={(e) => setDocWorkingHours(e.target.value)}
+                                    >
+                                        <option value="4">4 Hours / Day</option>
+                                        <option value="6">6 Hours / Day</option>
+                                        <option value="8">8 Hours / Day</option>
+                                        <option value="10">10 Hours / Day</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div className="form-group">
-                                <label>Consultation Fee ($ USD)</label>
+                                <label>Consultation Fee (₹ INR)</label>
                                 <input
                                     type="number"
                                     className="form-input"
                                     value={docFee}
+                                    step="50"
+                                    min="100"
                                     onChange={(e) => setDocFee(e.target.value)}
                                     required
                                 />
@@ -630,7 +766,7 @@ function Dashboard() {
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "18px" }}>
                             <div className="card" style={{ borderLeft: "4px solid #10b981" }}>
                                 <span style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Total Revenue</span>
-                                <h3 style={{ fontSize: "22px", color: "#15803d", marginTop: "4px" }}>${totalRevenue}</h3>
+                                <h3 style={{ fontSize: "22px", color: "#15803d", marginTop: "4px" }}>₹{totalRevenue.toLocaleString("en-IN")}</h3>
                             </div>
                             <div className="card" style={{ borderLeft: "4px solid #0284c7" }}>
                                 <span style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Total Appointments</span>
@@ -647,9 +783,9 @@ function Dashboard() {
                         </div>
 
                         <div className="card">
-                            <h3 style={{ fontSize: "16px", marginBottom: "8px", color: "#0f172a" }}>Hospital Admin Portal</h3>
+                            <h3 style={{ fontSize: "16px", marginBottom: "6px", color: "#0f172a" }}>Hospital Admin Overview</h3>
                             <p style={{ fontSize: "13.5px", color: "#475569" }}>
-                                You have full permissions to view revenue, doctor schedules, patient profiles, and system appointments.
+                                System overview of hospital appointments, doctors, patients, and revenue.
                             </p>
                         </div>
                     </div>
@@ -658,7 +794,7 @@ function Dashboard() {
                 {/* TAB: ADMIN ALL PATIENTS */}
                 {activeTab === "patients" && currentUser.role === "ADMIN" && (
                     <div className="card" style={{ marginTop: "16px" }}>
-                        <h2 style={{ fontSize: "18px", marginBottom: "14px", color: "#0f172a" }}>All Registered Patients</h2>
+                        <h2 style={{ fontSize: "18px", marginBottom: "14px", color: "#0f172a" }}>Registered Patients</h2>
                         <div className="table-responsive">
                             <table className="app-table">
                                 <thead>
@@ -673,7 +809,7 @@ function Dashboard() {
                                     {patientUsers.map((p) => (
                                         <tr key={p.id}>
                                             <td>#{p.id}</td>
-                                            <td><strong>👤 {p.name}</strong></td>
+                                            <td><strong>{p.name}</strong></td>
                                             <td>{p.email}</td>
                                             <td>{p.phone || "N/A"}</td>
                                         </tr>
@@ -684,11 +820,98 @@ function Dashboard() {
                     </div>
                 )}
 
+                {/* DOCTOR PRESCRIPTION EDIT MODAL */}
+                {prescriptionEditModal.open && (
+                    <div className="modal-backdrop" onClick={() => setPrescriptionEditModal({ open: false, appointmentId: null, patientName: "", prescriptionText: "", saving: false })}>
+                        <div className="modal-box" style={{ maxWidth: "520px" }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px" }}>
+                                <h3 style={{ fontSize: "16px", color: "#0f172a", margin: 0 }}>
+                                    Write Prescription
+                                </h3>
+                                <span style={{ fontSize: "13px", color: "#64748b" }}>
+                                    Appointment #{prescriptionEditModal.appointmentId}
+                                </span>
+                            </div>
+
+                            <p style={{ fontSize: "13.5px", color: "#334155", marginBottom: "12px" }}>
+                                Patient: <strong>{prescriptionEditModal.patientName}</strong>
+                            </p>
+
+                            <form onSubmit={handleSavePrescription}>
+                                <div className="form-group">
+                                    <label>Prescription & Notes</label>
+                                    <textarea
+                                        className="form-input"
+                                        rows="5"
+                                        placeholder="Enter prescribed medicines and clinical notes here..."
+                                        value={prescriptionEditModal.prescriptionText}
+                                        onChange={(e) => setPrescriptionEditModal({ ...prescriptionEditModal, prescriptionText: e.target.value })}
+                                        required
+                                        style={{ resize: "vertical" }}
+                                    ></textarea>
+                                </div>
+
+                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline btn-sm"
+                                        onClick={() => setPrescriptionEditModal({ open: false, appointmentId: null, patientName: "", prescriptionText: "", saving: false })}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary btn-sm"
+                                        disabled={prescriptionEditModal.saving}
+                                    >
+                                        {prescriptionEditModal.saving ? "Saving..." : "Save Prescription"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* PATIENT PRESCRIPTION VIEW MODAL */}
+                {prescriptionViewModal.open && (
+                    <div className="modal-backdrop" onClick={() => setPrescriptionViewModal({ open: false, doctorName: "", specialization: "", date: "", prescriptionText: "" })}>
+                        <div className="modal-box" style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px" }}>
+                                <h3 style={{ fontSize: "16px", color: "#0f172a", margin: 0 }}>
+                                    Medical Prescription
+                                </h3>
+                                <span className="badge badge-available">
+                                    Saved
+                                </span>
+                            </div>
+
+                            <div style={{ fontSize: "13.5px", color: "#334155", marginBottom: "12px" }}>
+                                <p style={{ margin: "3px 0" }}>Doctor: <strong>{prescriptionViewModal.doctorName}</strong> ({prescriptionViewModal.specialization})</p>
+                                <p style={{ margin: "3px 0", color: "#64748b" }}>Date: {prescriptionViewModal.date}</p>
+                            </div>
+
+                            <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: "6px", border: "1px solid #e2e8f0", minHeight: "80px", whiteSpace: "pre-wrap", fontSize: "13.5px", color: "#0f172a", lineHeight: "1.5" }}>
+                                {prescriptionViewModal.prescriptionText}
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => setPrescriptionViewModal({ open: false, doctorName: "", specialization: "", date: "", prescriptionText: "" })}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* RESCHEDULE MODAL */}
                 {rescheduleModal.open && (
                     <div className="modal-backdrop" onClick={() => setRescheduleModal({ open: false, appointmentId: null, date: "", time: timeSlots[0] })}>
                         <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-                            <h3 style={{ fontSize: "17px", marginBottom: "12px", color: "#0f172a" }}>Reschedule Appointment</h3>
+                            <h3 style={{ fontSize: "16px", marginBottom: "12px", color: "#0f172a" }}>Reschedule Appointment</h3>
 
                             <form onSubmit={handleRescheduleSubmit}>
                                 <div className="form-group">
@@ -734,13 +957,13 @@ function Dashboard() {
                     </div>
                 )}
 
-                {/* BILLING RECEIPT MODAL (NO PRINT BUTTON, JUST DETAILS & CLOSE) */}
+                {/* BILLING RECEIPT MODAL */}
                 {receiptModal.open && receiptModal.billData && (
                     <div className="modal-backdrop" onClick={() => setReceiptModal({ open: false, billData: null })}>
                         <div className="modal-box" style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px" }}>
-                                <h3 style={{ fontSize: "17px", color: "#0f172a", margin: 0 }}>
-                                    🧾 Consultation Bill & Receipt
+                                <h3 style={{ fontSize: "16px", color: "#0f172a", margin: 0 }}>
+                                    Consultation Receipt
                                 </h3>
                                 <span className="badge badge-booked">
                                     {receiptModal.billData.paymentStatus || "PAID"}
@@ -768,15 +991,15 @@ function Dashboard() {
                                 <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: "6px", border: "1px solid #e2e8f0", margin: "10px 0" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                                         <span>Doctor Consultation Fee:</span>
-                                        <span>${receiptModal.billData.consultationFee?.toFixed(2) || "50.00"}</span>
+                                        <span>₹{receiptModal.billData.consultationFee?.toFixed(2) || "1000.00"}</span>
                                     </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", color: "#64748b", fontSize: "12.5px" }}>
                                         <span>Hospital Service Tax (5%):</span>
-                                        <span>${receiptModal.billData.taxAmount?.toFixed(2) || "2.50"}</span>
+                                        <span>₹{receiptModal.billData.taxAmount?.toFixed(2) || "50.00"}</span>
                                     </div>
-                                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px", borderTop: "1px dashed #cbd5e1", fontWeight: "bold", fontSize: "15px", color: "#0f766e" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px", borderTop: "1px dashed #cbd5e1", fontWeight: "600", fontSize: "14.5px", color: "#0f766e" }}>
                                         <span>Total Amount:</span>
-                                        <span>${receiptModal.billData.totalAmount?.toFixed(2) || "52.50"}</span>
+                                        <span>₹{receiptModal.billData.totalAmount?.toFixed(2) || "1050.00"}</span>
                                     </div>
                                 </div>
                             </div>

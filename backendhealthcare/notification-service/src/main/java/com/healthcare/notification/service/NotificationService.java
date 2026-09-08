@@ -21,17 +21,17 @@ public class NotificationService {
         sendNotification(new Notification(
                 idGenerator.getAndIncrement(),
                 "patient@hospital.com",
-                "John Doe",
+                "Rahul Sharma",
                 "Appointment Confirmed",
-                "Your consultation with Dr. Sarah Jenkins is confirmed for tomorrow at 10:00 AM.",
+                "Your consultation with Dr. Bhavna Chaudhry is confirmed for tomorrow at 10:00 AM.",
                 "EMAIL"
         ));
         sendNotification(new Notification(
                 idGenerator.getAndIncrement(),
-                "dr.sarah@hospital.com",
-                "Dr. Sarah Jenkins",
+                "dr.bhavna@hospital.com",
+                "Dr. Bhavna Chaudhry",
                 "New Patient Booking",
-                "Patient John Doe has booked an appointment for tomorrow at 10:00 AM.",
+                "Patient Rahul Sharma has booked an appointment for tomorrow at 10:00 AM.",
                 "EMAIL"
         ));
     }

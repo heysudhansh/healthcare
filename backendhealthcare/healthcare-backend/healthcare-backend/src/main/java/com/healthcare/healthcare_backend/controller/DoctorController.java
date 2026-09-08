@@ -38,4 +38,12 @@ public class DoctorController {
             @RequestParam Double consultationFee) {
         return doctorService.updateConsultationFee(doctorId, consultationFee);
     }
+
+    @PutMapping("/shift/{doctorId}")
+    public Doctor updateShift(
+            @PathVariable Long doctorId,
+            @RequestParam(required = false) String shift,
+            @RequestParam(required = false) Integer workingHours) {
+        return doctorService.updateShift(doctorId, shift, workingHours);
+    }
 }

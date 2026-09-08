@@ -40,8 +40,10 @@ public class UserService {
             doctor.setSpecialization(request.getSpecialization() != null && !request.getSpecialization().isBlank() ? request.getSpecialization() : "General Physician");
             doctor.setQualification(request.getQualification() != null && !request.getQualification().isBlank() ? request.getQualification() : "MBBS, MD");
             doctor.setExperience(request.getExperience() != null ? request.getExperience() : 5);
-            doctor.setConsultationFee(request.getConsultationFee() != null ? request.getConsultationFee() : 50.0);
+            doctor.setConsultationFee(request.getConsultationFee() != null ? request.getConsultationFee() : 1000.0);
             doctor.setAvailability(request.getAvailability() != null && !request.getAvailability().isBlank() ? request.getAvailability() : "Available");
+            doctor.setShift(request.getShift() != null && !request.getShift().isBlank() ? request.getShift() : "Day");
+            doctor.setWorkingHours(request.getWorkingHours() != null ? request.getWorkingHours() : 8);
             doctorRepository.save(doctor);
         } else if (savedUser.getRole() == Role.PATIENT) {
             Patient patient = new Patient();
@@ -73,7 +75,7 @@ public class UserService {
                 doctor.setQualification("MBBS, MD");
                 doctor.setExperience(5);
                 doctor.setAvailability("Available");
-                doctor.setConsultationFee(50.0);
+                doctor.setConsultationFee(1000.0);
                 return doctorRepository.save(doctor);
             });
         }

@@ -14,10 +14,10 @@ public class BillingService {
     private final AtomicLong idCounter = new AtomicLong(1);
 
     public BillingService() {
-        // Initial sample seed bills for demonstration
-        createBill(new Bill(idCounter.getAndIncrement(), 101L, "John Doe", "Dr. Sarah Jenkins", 60.0, "PAID"));
-        createBill(new Bill(idCounter.getAndIncrement(), 102L, "Alice Williams", "Dr. Alex Rivera", 45.0, "PAID"));
-        createBill(new Bill(idCounter.getAndIncrement(), 103L, "Robert Johnson", "Dr. Sarah Jenkins", 60.0, "PAID"));
+        // Initial sample seed bills with Indian doctor names and INR fees
+        createBill(new Bill(idCounter.getAndIncrement(), 101L, "Rahul Sharma", "Dr. Bhavna Chaudhry", 1200.0, "PAID"));
+        createBill(new Bill(idCounter.getAndIncrement(), 102L, "Amit Verma", "Dr. Rajiv Dang", 1000.0, "PAID"));
+        createBill(new Bill(idCounter.getAndIncrement(), 103L, "Pooja Patel", "Dr. Arvind M Das", 1500.0, "PAID"));
     }
 
     public Bill createBill(Bill bill) {
@@ -25,7 +25,7 @@ public class BillingService {
             bill.setId(idCounter.getAndIncrement());
         }
         if (bill.getConsultationFee() == null) {
-            bill.setConsultationFee(50.0);
+            bill.setConsultationFee(1000.0);
         }
         if (bill.getTaxAmount() == null) {
             bill.setTaxAmount(Math.round((bill.getConsultationFee() * 0.05) * 100.0) / 100.0);
@@ -72,7 +72,7 @@ public class BillingService {
         summary.put("totalRevenue", Math.round(totalRevenue * 100.0) / 100.0);
         summary.put("totalInvoices", billDatabase.size());
         summary.put("paidInvoices", paidBills);
-        summary.put("currency", "USD ($)");
+        summary.put("currency", "INR (₹)");
         return summary;
     }
 }

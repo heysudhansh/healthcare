@@ -15,6 +15,10 @@ public class Appointment {
     private String status;
     private Double consultationFee;
 
+    // Doctor clinical prescription and notes
+    @Column(columnDefinition = "TEXT")
+    private String prescription;
+
     @ManyToOne
     @JoinColumn(name="patient_id")
     private Patient patient;
@@ -64,6 +68,14 @@ public class Appointment {
 
     public void setConsultationFee(Double consultationFee) {
         this.consultationFee = consultationFee;
+    }
+
+    public String getPrescription() {
+        return prescription;
+    }
+
+    public void setPrescription(String prescription) {
+        this.prescription = prescription;
     }
 
     public Patient getPatient() {

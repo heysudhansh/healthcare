@@ -116,4 +116,11 @@ public class AppointmentService {
 
         return appointmentRepository.save(appointment);
     }
+
+    public Appointment updatePrescription(Long id, String prescription) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+        appointment.setPrescription(prescription);
+        return appointmentRepository.save(appointment);
+    }
 }

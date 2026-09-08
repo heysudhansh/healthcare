@@ -62,4 +62,11 @@ public class AppointmentController {
                         newTime);
     }
 
+    @PutMapping("/prescription/{id}")
+    public Appointment updatePrescription(
+            @PathVariable Long id,
+            @RequestParam String prescription) {
+        return appointmentService.updatePrescription(id, prescription);
+    }
+
 }

@@ -4,7 +4,7 @@ This is a standalone Spring Boot microservice dedicated to handling patient invo
 
 ---
 
-## 🏗️ Architecture & Highlights (For Presentation)
+## Architecture & Highlights (For Presentation)
 - **Port**: `8083` (Runs independently from the main backend on `8081` and notification service on `8082`).
 - **Why Microservices?**: Decouples financial transactions and invoice generation from core appointment booking, allowing independent scaling and compliance auditing.
 - **REST Endpoints**:
@@ -15,7 +15,7 @@ This is a standalone Spring Boot microservice dedicated to handling patient invo
 
 ---
 
-## 🚀 How to Run the Microservice
+## How to Run the Microservice
 From the `billing-service` directory:
 ```powershell
 cd c:\Users\sudha\Desktop\healthcare\backendhealthcare\billing-service

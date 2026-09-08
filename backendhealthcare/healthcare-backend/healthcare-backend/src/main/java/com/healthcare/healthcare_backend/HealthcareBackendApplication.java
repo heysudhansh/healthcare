@@ -25,78 +25,183 @@ public class HealthcareBackendApplication {
 			DoctorRepository doctorRepository,
 			PatientRepository patientRepository) {
 		return args -> {
-			// 1. Seed Default Administrator if not existing
+			// 1. Admin Account
 			if (userRepository.findByEmail("admin@hospital.com") == null) {
 				User admin = new User();
 				admin.setName("System Administrator");
 				admin.setEmail("admin@hospital.com");
 				admin.setPassword("admin123");
-				admin.setPhone("+1-800-555-0100");
+				admin.setPhone("+91-98100-55000");
 				admin.setRole(Role.ADMIN);
 				userRepository.save(admin);
 				System.out.println("Default Admin created: admin@hospital.com / admin123");
 			}
 
-			// 2. Seed Default Doctor if not existing
-			if (userRepository.findByEmail("dr.sarah@hospital.com") == null) {
-				User doctorUser = new User();
-				doctorUser.setName("Dr. Sarah Jenkins");
-				doctorUser.setEmail("dr.sarah@hospital.com");
-				doctorUser.setPassword("doctor123");
-				doctorUser.setPhone("+1-555-019-2834");
-				doctorUser.setRole(Role.DOCTOR);
-				User savedDocUser = userRepository.save(doctorUser);
+			// Helper lambda to seed doctors
+			java.util.function.Consumer<DoctorSeedData> createDoctorIfAbsent = data -> {
+				if (userRepository.findByEmail(data.email) == null) {
+					User user = new User();
+					user.setName(data.name);
+					user.setEmail(data.email);
+					user.setPassword("doctor123");
+					user.setPhone(data.phone);
+					user.setRole(Role.DOCTOR);
+					User savedUser = userRepository.save(user);
 
-				Doctor doctor = new Doctor();
-				doctor.setUser(savedDocUser);
-				doctor.setSpecialization("Cardiologist");
-				doctor.setQualification("MBBS, MD (Cardiology)");
-				doctor.setExperience(10);
-				doctor.setAvailability("Available");
-				doctor.setConsultationFee(60.0);
-				doctorRepository.save(doctor);
-				System.out.println("Default Doctor created: dr.sarah@hospital.com / doctor123");
-			}
+					Doctor doctor = new Doctor();
+					doctor.setUser(savedUser);
+					doctor.setSpecialization(data.specialization);
+					doctor.setQualification(data.qualification);
+					doctor.setExperience(data.experience);
+					doctor.setAvailability("Available");
+					doctor.setConsultationFee(data.fee);
+					doctor.setShift(data.shift);
+					doctor.setWorkingHours(data.workingHours);
+					doctorRepository.save(doctor);
+					System.out.println("Doctor created: " + data.name + " (" + data.email + ") - " + data.shift + " Shift (" + data.workingHours + " hrs) - Fee: ₹" + data.fee);
+				}
+			};
 
-			// 3. Seed Second Doctor
-			if (userRepository.findByEmail("dr.alex@hospital.com") == null) {
-				User doctorUser2 = new User();
-				doctorUser2.setName("Dr. Alex Rivera");
-				doctorUser2.setEmail("dr.alex@hospital.com");
-				doctorUser2.setPassword("doctor123");
-				doctorUser2.setPhone("+1-555-014-9921");
-				doctorUser2.setRole(Role.DOCTOR);
-				User savedDocUser2 = userRepository.save(doctorUser2);
+			// 2. Real Indian Doctors with Shifts & Working Hours
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Bhavna Chaudhry",
+					"dr.bhavna@hospital.com",
+					"+91-98111-20001",
+					"Obstetrics & Gynaecology",
+					"MBBS, MS (Obstetrics & Gynaecology)",
+					29,
+					1200.0,
+					"Day",
+					8
+			));
 
-				Doctor doctor2 = new Doctor();
-				doctor2.setUser(savedDocUser2);
-				doctor2.setSpecialization("General Physician");
-				doctor2.setQualification("MBBS, MD");
-				doctor2.setExperience(7);
-				doctor2.setAvailability("Available");
-				doctor2.setConsultationFee(45.0);
-				doctorRepository.save(doctor2);
-			}
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Rajiv Dang",
+					"dr.rajiv@hospital.com",
+					"+91-98111-20002",
+					"Internal Medicine",
+					"MBBS, MD (Internal Medicine)",
+					39,
+					1000.0,
+					"Day",
+					8
+			));
 
-			// 4. Seed Default Patient if not existing
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Arvind M Das",
+					"dr.arvind@hospital.com",
+					"+91-98111-20003",
+					"Cardiology & Cardiac Sciences",
+					"MBBS, MD, DM (Cardiology)",
+					35,
+					1500.0,
+					"Day",
+					6
+			));
+
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Ravinder Gera",
+					"dr.ravinder@hospital.com",
+					"+91-98111-20004",
+					"ENT (Ear Nose Throat)",
+					"MBBS, MS (ENT)",
+					26,
+					900.0,
+					"Night",
+					6
+			));
+
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. S.K.S. Marya",
+					"dr.marya@hospital.com",
+					"+91-98111-20005",
+					"Orthopaedics & Joint Replacement",
+					"MBBS, MS (Ortho), M.Ch",
+					41,
+					1800.0,
+					"Day",
+					8
+			));
+
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Ambrish Mithal",
+					"dr.ambrish@hospital.com",
+					"+91-98111-20006",
+					"Endocrinology & Diabetology",
+					"MBBS, MD, DM (Endocrinology)",
+					40,
+					1500.0,
+					"Day",
+					8
+			));
+
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Sunil Prakash",
+					"dr.sunil@hospital.com",
+					"+91-98111-20007",
+					"Nephrology & Kidney Transplant",
+					"MBBS, MD, DM (Nephrology)",
+					41,
+					1600.0,
+					"Night",
+					6
+			));
+
+			createDoctorIfAbsent.accept(new DoctorSeedData(
+					"Dr. Sandeep Batra",
+					"dr.sandeep@hospital.com",
+					"+91-98111-20008",
+					"Medical Oncology & Cancer Care",
+					"MBBS, MD, DNB (Oncology)",
+					17,
+					1400.0,
+					"Day",
+					8
+			));
+
+			// 3. Default Patient Account
 			if (userRepository.findByEmail("patient@hospital.com") == null) {
 				User patientUser = new User();
-				patientUser.setName("John Doe");
+				patientUser.setName("Rahul Sharma");
 				patientUser.setEmail("patient@hospital.com");
 				patientUser.setPassword("patient123");
-				patientUser.setPhone("+1-555-018-7722");
+				patientUser.setPhone("+91-98765-43210");
 				patientUser.setRole(Role.PATIENT);
 				User savedPatUser = userRepository.save(patientUser);
 
 				Patient patient = new Patient();
 				patient.setUser(savedPatUser);
 				patient.setGender("Male");
-				patient.setBloodGroup("O+");
-				patient.setMedicalHistory("Routine Health Checkup");
+				patient.setBloodGroup("B+");
+				patient.setMedicalHistory("Routine Annual Health Checkup");
 				patientRepository.save(patient);
 				System.out.println("Default Patient created: patient@hospital.com / patient123");
 			}
 		};
 	}
 
+	// Helper record for seeding
+	private static class DoctorSeedData {
+		String name;
+		String email;
+		String phone;
+		String specialization;
+		String qualification;
+		int experience;
+		double fee;
+		String shift;
+		int workingHours;
+
+		DoctorSeedData(String name, String email, String phone, String specialization, String qualification, int experience, double fee, String shift, int workingHours) {
+			this.name = name;
+			this.email = email;
+			this.phone = phone;
+			this.specialization = specialization;
+			this.qualification = qualification;
+			this.experience = experience;
+			this.fee = fee;
+			this.shift = shift;
+			this.workingHours = workingHours;
+		}
+	}
 }

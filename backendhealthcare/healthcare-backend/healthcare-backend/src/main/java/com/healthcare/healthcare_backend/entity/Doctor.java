@@ -4,18 +4,29 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name="doctors")
-
 public class Doctor {
-    @Id@GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String specialization;
     private String qualification;
     private int experience;
     private String availability;
-
     private Double consultationFee;
 
+    // Shift: "Day" (e.g., 9 AM - 5 PM) or "Night" (e.g., 6 PM - 2 AM)
+    private String shift = "Day";
+
+    // Daily Working Hours: e.g. 4, 6, 8 hours per day
+    private Integer workingHours = 8;
+
+    @OneToOne
+    @JoinColumn(name="user_id", unique=true)
+    private User user;
+
+    public Doctor() {
+    }
 
     public Long getId() {
         return id;
@@ -73,11 +84,19 @@ public class Doctor {
         this.consultationFee = consultationFee;
     }
 
-    @OneToOne@JoinColumn(name="user_id",unique=true)
-
-    private User user;
-    public Doctor(){
-
+    public String getShift() {
+        return shift;
     }
 
+    public void setShift(String shift) {
+        this.shift = shift;
+    }
+
+    public Integer getWorkingHours() {
+        return workingHours;
+    }
+
+    public void setWorkingHours(Integer workingHours) {
+        this.workingHours = workingHours;
+    }
 }

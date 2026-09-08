@@ -24,6 +24,7 @@ public class DoctorService {
 
     public Doctor updateAvailability(Long doctorId, String availability) {
         Doctor doctor = doctorRepository.findById(doctorId)
+                .or(() -> doctorRepository.findByUserId(doctorId))
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
         doctor.setAvailability(availability);
         return doctorRepository.save(doctor);
@@ -31,8 +32,22 @@ public class DoctorService {
 
     public Doctor updateConsultationFee(Long doctorId, Double consultationFee) {
         Doctor doctor = doctorRepository.findById(doctorId)
+                .or(() -> doctorRepository.findByUserId(doctorId))
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
         doctor.setConsultationFee(consultationFee);
+        return doctorRepository.save(doctor);
+    }
+
+    public Doctor updateShift(Long doctorId, String shift, Integer workingHours) {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .or(() -> doctorRepository.findByUserId(doctorId))
+                .orElseThrow(() -> new RuntimeException("Doctor not found"));
+        if (shift != null && !shift.isBlank()) {
+            doctor.setShift(shift);
+        }
+        if (workingHours != null && workingHours > 0) {
+            doctor.setWorkingHours(workingHours);
+        }
         return doctorRepository.save(doctor);
     }
 }

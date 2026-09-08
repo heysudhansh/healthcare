@@ -3,21 +3,23 @@ package com.healthcare.healthcare_backend.dto;
 import com.healthcare.healthcare_backend.entity.Role;
 
 public class RegisterRequest {
-
+    // common fields for both doc and patient
     private String name;
     private String email;
     private String password;
     private String phone;
     private Role role;
 
-    // Doctor specific fields
+    // Doctor fields
     private String specialization;
     private String qualification;
     private Integer experience;
     private Double consultationFee;
     private String availability;
+    private String shift;          // "Day" or "Night"
+    private Integer workingHours;  // e.g. 4, 6, 8
 
-    // Patient specific fields
+    // Patient fields
     private String medicalHistory;
     private String gender;
     private String bloodGroup;
@@ -103,6 +105,22 @@ public class RegisterRequest {
 
     public void setAvailability(String availability) {
         this.availability = availability;
+    }
+
+    public String getShift() {
+        return shift;
+    }
+
+    public void setShift(String shift) {
+        this.shift = shift;
+    }
+
+    public Integer getWorkingHours() {
+        return workingHours;
+    }
+
+    public void setWorkingHours(Integer workingHours) {
+        this.workingHours = workingHours;
     }
 
     public String getMedicalHistory() {

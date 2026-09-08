@@ -35,7 +35,7 @@ function Home() {
 
                         <div className="hero-buttons">
                             <button onClick={handleBookClick} className="btn btn-primary">
-                                📅 Book Appointment
+                                Book Appointment
                             </button>
                             {!user && (
                                 <button onClick={() => navigate("/signup")} className="btn btn-outline">

@@ -24,8 +24,7 @@ public class PatientService {
     }
 
     public Patient updateMedicalHistory(Long patientId, String medicalHistory) {
-        Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new RuntimeException("Patient not found"));
+        Patient patient = patientRepository.findById(patientId).orElseThrow(() -> new RuntimeException("Patient not found"));
         patient.setMedicalHistory(medicalHistory);
         return patientRepository.save(patient);
     }
