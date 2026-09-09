@@ -3,16 +3,13 @@ package com.healthcare.healthcare_backend.controller;
 import com.healthcare.healthcare_backend.dto.AppointmentRequest;
 import com.healthcare.healthcare_backend.entity.Appointment;
 import com.healthcare.healthcare_backend.service.AppointmentService;
-
-
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/appointments")
-
-
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
@@ -22,7 +19,7 @@ public class AppointmentController {
     }
 
     @PostMapping
-    public Appointment createAppointment(@RequestBody AppointmentRequest request) {
+    public Appointment createAppointment(@Valid @RequestBody AppointmentRequest request) {
         return appointmentService.createAppointment(request);
     }
 

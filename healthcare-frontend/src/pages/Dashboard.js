@@ -238,25 +238,31 @@ function Dashboard() {
     // Doctor saves prescription
     const handleSavePrescription = async (e) => {
         e.preventDefault();
+        const trimmedPrescription = (prescriptionEditModal.prescriptionText || "").trim();
+        if (!trimmedPrescription) {
+            showAlert("Prescription note cannot be empty.", "danger");
+            return;
+        }
+
         setPrescriptionEditModal(prev => ({ ...prev, saving: true }));
 
         try {
             await api.put(`/appointments/prescription/${prescriptionEditModal.appointmentId}`, null, {
-                params: { prescription: prescriptionEditModal.prescriptionText }
+                params: { prescription: trimmedPrescription }
             });
 
             // Dispatch background event to Notification Microservice
             notificationApi.post("/notifications/send", {
                 recipientEmail: currentUser.email,
                 subject: `Prescription for Appointment #${prescriptionEditModal.appointmentId}`,
-                message: `Prescription recorded by Doctor: ${prescriptionEditModal.prescriptionText.substring(0, 50)}...`
+                message: `Prescription recorded by Doctor: ${trimmedPrescription.substring(0, 50)}...`
             }).catch(() => {});
 
             showAlert("Prescription saved successfully.", "success");
             setPrescriptionEditModal({ open: false, appointmentId: null, patientName: "", prescriptionText: "", saving: false });
             fetchDashboardData();
         } catch (err) {
-            showAlert("Error saving prescription.", "danger");
+            showAlert(err.response?.data?.message || "Error saving prescription.", "danger");
             setPrescriptionEditModal(prev => ({ ...prev, saving: false }));
         }
     };

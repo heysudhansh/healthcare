@@ -25,11 +25,30 @@ public class UserService {
     }
 
     public User registerUser(RegisterRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Registration request cannot be null");
+        }
+        if (request.getName() == null || !request.getName().trim().matches("^[a-zA-Z\\s]{2,50}$")) {
+            throw new IllegalArgumentException("Invalid name. Name must contain only letters and spaces (2 to 50 characters)");
+        }
+        if (request.getPhone() == null || !request.getPhone().trim().matches("^[0-9]{10}$")) {
+            throw new IllegalArgumentException("Invalid phone number. Must be a 10-digit number");
+        }
+        if (request.getEmail() == null || !request.getEmail().trim().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new IllegalArgumentException("Invalid email format");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters long");
+        }
+        if (userRepository.findByEmail(request.getEmail().trim()) != null) {
+            throw new IllegalArgumentException("Email is already registered: " + request.getEmail().trim());
+        }
+
         User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setName(request.getName().trim());
+        user.setEmail(request.getEmail().trim());
         user.setPassword(request.getPassword());
-        user.setPhone(request.getPhone());
+        user.setPhone(request.getPhone().trim());
         user.setRole(request.getRole() != null ? request.getRole() : Role.PATIENT);
 
         User savedUser = userRepository.save(user);

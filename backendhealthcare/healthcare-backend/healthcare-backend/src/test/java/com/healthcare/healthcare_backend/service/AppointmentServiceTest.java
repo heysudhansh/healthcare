@@ -48,7 +48,7 @@ public class AppointmentServiceTest {
         mockDoctor.setConsultationFee(1500.0);
         mockDoctor.setSpecialization("Cardiology & Cardiac Sciences");
         User dUser = new User();
-        dUser.setName("Dr. Arvind M Das");
+        dUser.setName("Dr Arvind M Das");
         mockDoctor.setUser(dUser);
     }
 
@@ -58,19 +58,19 @@ public class AppointmentServiceTest {
         AppointmentRequest req = new AppointmentRequest();
         req.setPatientId(1L);
         req.setDoctorId(2L);
-        req.setAppointmentDate("2026-09-15");
+        req.setAppointmentDate("2028-09-15");
         req.setAppointmentTime("10:00 AM");
 
         when(patientRepository.findById(1L)).thenReturn(Optional.of(mockPatient));
         when(doctorRepository.findById(2L)).thenReturn(Optional.of(mockDoctor));
-        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2026-09-15", "10:00 AM")).thenReturn(false);
-        when(appointmentRepository.existsByPatientAndAppointmentDateAndAppointmentTime(mockPatient, "2026-09-15", "10:00 AM")).thenReturn(false);
+        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2028-09-15", "10:00 AM")).thenReturn(false);
+        when(appointmentRepository.existsByPatientAndAppointmentDateAndAppointmentTime(mockPatient, "2028-09-15", "10:00 AM")).thenReturn(false);
 
         Appointment saved = new Appointment();
         saved.setId(501L);
         saved.setPatient(mockPatient);
         saved.setDoctor(mockDoctor);
-        saved.setAppointmentDate("2026-09-15");
+        saved.setAppointmentDate("2028-09-15");
         saved.setAppointmentTime("10:00 AM");
         saved.setStatus("Booked");
         saved.setConsultationFee(1500.0);
@@ -87,42 +87,40 @@ public class AppointmentServiceTest {
     }
 
     @Test
-    @DisplayName("2. Prevent doctor double-booking for same date and time slot")
-    void testCreateAppointment_DoctorDoubleBooking_ThrowsException() {
+    @DisplayName("2. Throws error when booking with non-existent patient ID")
+    void testCreateAppointment_PatientNotFound_ThrowsException() {
         AppointmentRequest req = new AppointmentRequest();
-        req.setPatientId(1L);
+        req.setPatientId(999L);
         req.setDoctorId(2L);
-        req.setAppointmentDate("2026-09-15");
+        req.setAppointmentDate("2028-09-15");
         req.setAppointmentTime("10:00 AM");
 
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(mockPatient));
-        when(doctorRepository.findById(2L)).thenReturn(Optional.of(mockDoctor));
-        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2026-09-15", "10:00 AM")).thenReturn(true);
-
-        assertThrows(AppointmentAlreadyExistsException.class, () -> {
-            appointmentService.createAppointment(req);
-        });
-    }
-
-    @Test
-    @DisplayName("3. Prevent patient double-booking across multiple doctors at same time")
-    void testCreateAppointment_PatientDoubleBooking_ThrowsException() {
-        AppointmentRequest req = new AppointmentRequest();
-        req.setPatientId(1L);
-        req.setDoctorId(2L);
-        req.setAppointmentDate("2026-09-15");
-        req.setAppointmentTime("10:00 AM");
-
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(mockPatient));
-        when(doctorRepository.findById(2L)).thenReturn(Optional.of(mockDoctor));
-        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2026-09-15", "10:00 AM")).thenReturn(false);
-        when(appointmentRepository.existsByPatientAndAppointmentDateAndAppointmentTime(mockPatient, "2026-09-15", "10:00 AM")).thenReturn(true);
+        when(patientRepository.findById(999L)).thenReturn(Optional.empty());
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
             appointmentService.createAppointment(req);
         });
 
-        assertEquals("Patient already has an appointment at this time.", ex.getMessage());
+        assertEquals("Patient not found", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("3. Throws error when booking with non-existent doctor ID")
+    void testCreateAppointment_DoctorNotFound_ThrowsException() {
+        AppointmentRequest req = new AppointmentRequest();
+        req.setPatientId(1L);
+        req.setDoctorId(999L);
+        req.setAppointmentDate("2028-09-15");
+        req.setAppointmentTime("10:00 AM");
+
+        when(patientRepository.findById(1L)).thenReturn(Optional.of(mockPatient));
+        when(doctorRepository.findById(999L)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            appointmentService.createAppointment(req);
+        });
+
+        assertEquals("Doctor not found", ex.getMessage());
     }
 
     @Test
@@ -134,18 +132,86 @@ public class AppointmentServiceTest {
         req.setAppointmentDate(null);
         req.setAppointmentTime("10:00 AM");
 
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            appointmentService.createAppointment(req);
+        });
+
+        assertTrue(ex.getMessage().contains("Appointment date is required"));
+    }
+
+    @Test
+    @DisplayName("5. Prevent booking appointment for a past date")
+    void testCreateAppointment_PastDate_ThrowsException() {
+        AppointmentRequest req = new AppointmentRequest();
+        req.setPatientId(1L);
+        req.setDoctorId(2L);
+        req.setAppointmentDate("2020-01-01");
+        req.setAppointmentTime("10:00 AM");
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            appointmentService.createAppointment(req);
+        });
+
+        assertTrue(ex.getMessage().contains("Cannot book an appointment for a past date"));
+    }
+
+    @Test
+    @DisplayName("6. Missing appointment time validation check")
+    void testCreateAppointment_MissingTime_ThrowsException() {
+        AppointmentRequest req = new AppointmentRequest();
+        req.setPatientId(1L);
+        req.setDoctorId(2L);
+        req.setAppointmentDate("2028-09-15");
+        req.setAppointmentTime("");
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            appointmentService.createAppointment(req);
+        });
+
+        assertTrue(ex.getMessage().contains("Appointment time is required"));
+    }
+
+    @Test
+    @DisplayName("7. Prevent doctor double-booking for same date and time slot")
+    void testCreateAppointment_DoctorDoubleBooking_ThrowsException() {
+        AppointmentRequest req = new AppointmentRequest();
+        req.setPatientId(1L);
+        req.setDoctorId(2L);
+        req.setAppointmentDate("2028-09-15");
+        req.setAppointmentTime("10:00 AM");
+
         when(patientRepository.findById(1L)).thenReturn(Optional.of(mockPatient));
         when(doctorRepository.findById(2L)).thenReturn(Optional.of(mockDoctor));
+        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2028-09-15", "10:00 AM")).thenReturn(true);
+
+        assertThrows(AppointmentAlreadyExistsException.class, () -> {
+            appointmentService.createAppointment(req);
+        });
+    }
+
+    @Test
+    @DisplayName("8. Prevent patient double-booking across multiple doctors at same time")
+    void testCreateAppointment_PatientDoubleBooking_ThrowsException() {
+        AppointmentRequest req = new AppointmentRequest();
+        req.setPatientId(1L);
+        req.setDoctorId(2L);
+        req.setAppointmentDate("2028-09-15");
+        req.setAppointmentTime("10:00 AM");
+
+        when(patientRepository.findById(1L)).thenReturn(Optional.of(mockPatient));
+        when(doctorRepository.findById(2L)).thenReturn(Optional.of(mockDoctor));
+        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2028-09-15", "10:00 AM")).thenReturn(false);
+        when(appointmentRepository.existsByPatientAndAppointmentDateAndAppointmentTime(mockPatient, "2028-09-15", "10:00 AM")).thenReturn(true);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
             appointmentService.createAppointment(req);
         });
 
-        assertEquals("Appointment date is required.", ex.getMessage());
+        assertEquals("Patient already has an appointment at this time.", ex.getMessage());
     }
 
     @Test
-    @DisplayName("5. Cancel existing appointment updates status to CANCELLED")
+    @DisplayName("9. Cancel existing appointment updates status to CANCELLED")
     void testCancelAppointment_Success() {
         Appointment appt = new Appointment();
         appt.setId(501L);
@@ -161,29 +227,39 @@ public class AppointmentServiceTest {
     }
 
     @Test
-    @DisplayName("6. Reschedule appointment to new date and time slot")
+    @DisplayName("10. Reschedule appointment to new date and time slot")
     void testRescheduleAppointment_Success() {
         Appointment appt = new Appointment();
         appt.setId(501L);
         appt.setDoctor(mockDoctor);
-        appt.setAppointmentDate("2026-09-15");
+        appt.setAppointmentDate("2028-09-15");
         appt.setAppointmentTime("10:00 AM");
         appt.setStatus("Booked");
 
         when(appointmentRepository.findById(501L)).thenReturn(Optional.of(appt));
-        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2026-09-20", "02:00 PM")).thenReturn(false);
+        when(appointmentRepository.existsByDoctorAndAppointmentDateAndAppointmentTime(mockDoctor, "2028-09-20", "02:00 PM")).thenReturn(false);
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
 
-        Appointment rescheduled = appointmentService.rescheduleAppointment(501L, "2026-09-20", "02:00 PM");
+        Appointment rescheduled = appointmentService.rescheduleAppointment(501L, "2028-09-20", "02:00 PM");
 
         assertNotNull(rescheduled);
-        assertEquals("2026-09-20", rescheduled.getAppointmentDate());
+        assertEquals("2028-09-20", rescheduled.getAppointmentDate());
         assertEquals("02:00 PM", rescheduled.getAppointmentTime());
         assertEquals("Booked", rescheduled.getStatus());
     }
 
     @Test
-    @DisplayName("7. Doctor saves clinical prescription on appointment")
+    @DisplayName("11. Prevent rescheduling appointment to a past date")
+    void testRescheduleAppointment_PastDate_ThrowsException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            appointmentService.rescheduleAppointment(501L, "2020-01-01", "10:00 AM");
+        });
+
+        assertTrue(ex.getMessage().contains("Cannot reschedule appointment to a past date"));
+    }
+
+    @Test
+    @DisplayName("12. Doctor saves clinical prescription on appointment")
     void testUpdatePrescription_Success() {
         Appointment appt = new Appointment();
         appt.setId(501L);
@@ -199,5 +275,15 @@ public class AppointmentServiceTest {
         assertNotNull(updated);
         assertEquals(prescriptionNotes, updated.getPrescription());
         verify(appointmentRepository, times(1)).save(appt);
+    }
+
+    @Test
+    @DisplayName("13. Reject updating prescription when prescription note is empty")
+    void testUpdatePrescription_EmptyPrescription_ThrowsException() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            appointmentService.updatePrescription(501L, "   ");
+        });
+
+        assertTrue(ex.getMessage().contains("Prescription note cannot be empty"));
     }
 }

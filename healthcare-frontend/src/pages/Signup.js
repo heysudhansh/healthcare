@@ -31,9 +31,18 @@ function Signup() {
     const navigate = useNavigate();
 
     const handleChange = (e) => {
+        const { name, value } = e.target;
+        if (name === "phone") {
+            const numericValue = value.replace(/\D/g, "").slice(0, 10);
+            setFormData({
+                ...formData,
+                phone: numericValue
+            });
+            return;
+        }
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [name]: value
         });
     };
 
@@ -42,18 +51,45 @@ function Signup() {
         setErrorMsg("");
         setSuccessMsg("");
 
-        if (!formData.name || !formData.email || !formData.password) {
-            setErrorMsg("Please fill in name, email, and password.");
+        const nameTrimmed = formData.name.trim();
+        const emailTrimmed = formData.email.trim();
+        const phoneTrimmed = formData.phone.trim();
+        const passwordTrimmed = formData.password.trim();
+
+        if (!nameTrimmed || !emailTrimmed || !passwordTrimmed || !phoneTrimmed) {
+            setErrorMsg("Please fill in all required fields (Name, Email, Password, and Phone).");
+            return;
+        }
+
+        const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+        if (!nameRegex.test(nameTrimmed)) {
+            setErrorMsg("Invalid Name. Name must contain only letters and spaces (2 to 50 characters).");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailTrimmed)) {
+            setErrorMsg("Invalid Email address format.");
+            return;
+        }
+
+        if (passwordTrimmed.length < 6) {
+            setErrorMsg("Password must be at least 6 characters long.");
+            return;
+        }
+
+        if (phoneTrimmed.length !== 10) {
+            setErrorMsg("Phone number must be exactly 10 digits.");
             return;
         }
 
         setLoading(true);
         try {
             const payload = {
-                name: formData.name.trim(),
-                email: formData.email.trim(),
-                password: formData.password.trim(),
-                phone: formData.phone.trim(),
+                name: nameTrimmed,
+                email: emailTrimmed,
+                password: passwordTrimmed,
+                phone: phoneTrimmed,
                 role: role
             };
 
@@ -80,7 +116,7 @@ function Signup() {
         } catch (error) {
             setErrorMsg(
                 error.response?.data?.message || 
-                "Error creating account. Email might already exist."
+                "Error creating account. Please check your details and try again."
             );
         } finally {
             setLoading(false);
@@ -163,14 +199,16 @@ function Signup() {
                         </div>
 
                         <div className="form-group">
-                            <label>Phone Number</label>
+                            <label>Phone Number * (10 Digits)</label>
                             <input
-                                type="text"
+                                type="tel"
                                 name="phone"
                                 className="form-input"
-                                placeholder="e.g. +91-98765-43210"
+                                placeholder="e.g. 9876543210"
+                                maxLength="10"
                                 value={formData.phone}
                                 onChange={handleChange}
+                                required
                             />
                         </div>
 

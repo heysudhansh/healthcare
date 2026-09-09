@@ -1,13 +1,29 @@
 package com.healthcare.healthcare_backend.dto;
 
 import com.healthcare.healthcare_backend.entity.Role;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
-    // common fields for both doc and patient
+
+    @NotBlank(message = "Name is required")
+    @Pattern(regexp = "^[a-zA-Z\\s]{2,50}$", message = "Name must contain only letters and spaces (2 to 50 characters)")
     private String name;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     private String email;
+
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
+
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^[0-9]{10}$", message = "Phone must be a valid 10-digit number")
     private String phone;
+
     private Role role;
 
     // Doctor fields
@@ -16,9 +32,8 @@ public class RegisterRequest {
     private Integer experience;
     private Double consultationFee;
     private String availability;
-    private String shift;          // "Day" or "Night"
-    private Integer workingHours;  // e.g. 4, 6, 8
-
+    private String shift;
+    private Integer workingHours;
     // Patient fields
     private String medicalHistory;
     private String gender;

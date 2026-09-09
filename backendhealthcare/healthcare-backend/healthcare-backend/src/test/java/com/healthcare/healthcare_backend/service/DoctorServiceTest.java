@@ -41,47 +41,20 @@ public class DoctorServiceTest {
     }
 
     @Test
-    @DisplayName("1. Update doctor availability to Busy or Available")
-    void testUpdateAvailability_Success() {
-        when(doctorRepository.findById(10L)).thenReturn(Optional.of(sampleDoctor));
-        when(doctorRepository.save(any(Doctor.class))).thenAnswer(i -> i.getArgument(0));
+    @DisplayName("1. Save and return doctor entity")
+    void testSaveDoctor_Success() {
+        when(doctorRepository.save(any(Doctor.class))).thenReturn(sampleDoctor);
 
-        Doctor updated = doctorService.updateAvailability(10L, "Busy");
+        Doctor saved = doctorService.saveDoctor(sampleDoctor);
 
-        assertNotNull(updated);
-        assertEquals("Busy", updated.getAvailability());
+        assertNotNull(saved);
+        assertEquals(10L, saved.getId());
+        assertEquals("Orthopaedics & Joint Replacement", saved.getSpecialization());
         verify(doctorRepository, times(1)).save(sampleDoctor);
     }
 
     @Test
-    @DisplayName("2. Update doctor consultation fee in Indian Rupees")
-    void testUpdateConsultationFee_Success() {
-        when(doctorRepository.findById(10L)).thenReturn(Optional.of(sampleDoctor));
-        when(doctorRepository.save(any(Doctor.class))).thenAnswer(i -> i.getArgument(0));
-
-        Doctor updated = doctorService.updateConsultationFee(10L, 2000.0);
-
-        assertNotNull(updated);
-        assertEquals(2000.0, updated.getConsultationFee());
-        verify(doctorRepository, times(1)).save(sampleDoctor);
-    }
-
-    @Test
-    @DisplayName("3. Update doctor shift timing and daily working hours")
-    void testUpdateShiftAndWorkingHours_Success() {
-        when(doctorRepository.findById(10L)).thenReturn(Optional.of(sampleDoctor));
-        when(doctorRepository.save(any(Doctor.class))).thenAnswer(i -> i.getArgument(0));
-
-        Doctor updated = doctorService.updateShift(10L, "Night", 6);
-
-        assertNotNull(updated);
-        assertEquals("Night", updated.getShift());
-        assertEquals(6, updated.getWorkingHours());
-        verify(doctorRepository, times(1)).save(sampleDoctor);
-    }
-
-    @Test
-    @DisplayName("4. Retrieve all registered specialist doctors")
+    @DisplayName("2. Retrieve all registered specialist doctors")
     void testGetAllDoctors_ReturnsList() {
         Doctor d1 = new Doctor();
         d1.setId(1L);
@@ -98,5 +71,81 @@ public class DoctorServiceTest {
         assertEquals(2, doctors.size());
         assertEquals("Cardiology", doctors.get(0).getSpecialization());
         assertEquals("ENT", doctors.get(1).getSpecialization());
+    }
+
+    @Test
+    @DisplayName("3. Update doctor availability to Busy or Available")
+    void testUpdateAvailability_Success() {
+        when(doctorRepository.findById(10L)).thenReturn(Optional.of(sampleDoctor));
+        when(doctorRepository.save(any(Doctor.class))).thenAnswer(i -> i.getArgument(0));
+
+        Doctor updated = doctorService.updateAvailability(10L, "Busy");
+
+        assertNotNull(updated);
+        assertEquals("Busy", updated.getAvailability());
+        verify(doctorRepository, times(1)).save(sampleDoctor);
+    }
+
+    @Test
+    @DisplayName("4. Update availability throws exception when doctor not found")
+    void testUpdateAvailability_DoctorNotFound_ThrowsException() {
+        when(doctorRepository.findById(999L)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            doctorService.updateAvailability(999L, "Busy");
+        });
+
+        assertEquals("Doctor not found", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("5. Update doctor consultation fee in Indian Rupees")
+    void testUpdateConsultationFee_Success() {
+        when(doctorRepository.findById(10L)).thenReturn(Optional.of(sampleDoctor));
+        when(doctorRepository.save(any(Doctor.class))).thenAnswer(i -> i.getArgument(0));
+
+        Doctor updated = doctorService.updateConsultationFee(10L, 2000.0);
+
+        assertNotNull(updated);
+        assertEquals(2000.0, updated.getConsultationFee());
+        verify(doctorRepository, times(1)).save(sampleDoctor);
+    }
+
+    @Test
+    @DisplayName("6. Update consultation fee throws exception when doctor not found")
+    void testUpdateConsultationFee_DoctorNotFound_ThrowsException() {
+        when(doctorRepository.findById(999L)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            doctorService.updateConsultationFee(999L, 1500.0);
+        });
+
+        assertEquals("Doctor not found", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("7. Update doctor shift timing and daily working hours")
+    void testUpdateShiftAndWorkingHours_Success() {
+        when(doctorRepository.findById(10L)).thenReturn(Optional.of(sampleDoctor));
+        when(doctorRepository.save(any(Doctor.class))).thenAnswer(i -> i.getArgument(0));
+
+        Doctor updated = doctorService.updateShift(10L, "Night", 6);
+
+        assertNotNull(updated);
+        assertEquals("Night", updated.getShift());
+        assertEquals(6, updated.getWorkingHours());
+        verify(doctorRepository, times(1)).save(sampleDoctor);
+    }
+
+    @Test
+    @DisplayName("8. Update shift throws exception when doctor not found")
+    void testUpdateShift_DoctorNotFound_ThrowsException() {
+        when(doctorRepository.findById(999L)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            doctorService.updateShift(999L, "Night", 6);
+        });
+
+        assertEquals("Doctor not found", ex.getMessage());
     }
 }

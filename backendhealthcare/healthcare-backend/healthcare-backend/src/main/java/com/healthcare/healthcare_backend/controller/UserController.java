@@ -3,6 +3,7 @@ package com.healthcare.healthcare_backend.controller;
 import com.healthcare.healthcare_backend.dto.RegisterRequest;
 import com.healthcare.healthcare_backend.entity.User;
 import com.healthcare.healthcare_backend.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class UserController {
     }
 
     @PostMapping
-    public User registerUser(@RequestBody RegisterRequest request) {
+    public User registerUser(@Valid @RequestBody RegisterRequest request) {
         return userService.registerUser(request);
     }
 
